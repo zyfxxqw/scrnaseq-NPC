@@ -8,8 +8,8 @@ library(ggsci)
 
 experiment.aggregate <- readRDS("1-34raw.rds")
 
-#10X 数据
-NPC1 <- Read10X("./SJC/")
+#10X data
+NPC1 <- Read10X("./patient1/")
 
 colnames(NPC1) <- paste(colnames(NPC1),"NPC1_nor",sep = "_")
 
