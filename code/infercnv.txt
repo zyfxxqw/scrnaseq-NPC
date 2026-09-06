@@ -1,0 +1,54 @@
+library(infercnv)
+library(Seurat)
+
+
+sce[["RNA"]] <- as(sce[["RNA"]], "Assay")
+
+dfcount <- as.matrix(pbmc@assays$RNA@counts)
+
+groupinfo= data.frame(cellId = colnames(dfcount),cellType= pbmc@meta.data$celltype )
+
+library(AnnoProbe)
+geneInfor=annoGene(rownames(dfcount),"SYMBOL",'human')
+geneInfor=geneInfor[with(geneInfor, order(chr, start)),c(1,4:6)]
+geneInfor=geneInfor[!duplicated(geneInfor[,1]),]
+
+dfcount =dfcount [rownames(dfcount ) %in% geneInfor[,1],]
+dfcount =dfcount [match( geneInfor[,1], rownames(dfcount) ),] 
+
+setwd("/home/wucheng/jianshu/pbmc/InferCNV")
+write.table(dfcount ,file ='expFile.txt',sep = '\t',quote = F)
+write.table(groupinfo,file = 'metaFiles.txt',sep = '\t',quote = F,col.names = F,row.names = F)
+write.table(geneInfor,file ='geneFile.txt',sep = '\t',quote = F,col.names = F,row.names = F)
+
+library(Seurat)
+library(ggplot2)
+library(infercnv)
+infercnv_obj = CreateInfercnvObject(raw_counts_matrix=dfcount,
+                                    annotations_file="./metaFiles.txt",
+                                    delim="\t",
+                                    gene_order_file= "./geneFile.txt",
+                                    ref_group_names=NULL) # 如果有正常细胞的话，把正常细胞的分组填进去
+future::plan("multiprocess",workers=15)# 多核并行处理
+save(infercnv_obj,file="infercnv_obj.Rdata")
+
+load("infercnv_obj.Rdata")
+infercnv_obj = infercnv::run(infercnv_obj,
+                             cutoff=0.1, # cutoff=1 works well for Smart-seq2, and cutoff=0.1 works well for 10x Genomics
+                             out_dir='infercnv_out/', 
+                             cluster_by_groups=TRUE, 
+                             denoise=TRUE, 
+                             HMM=F, 
+                             output_format = "pdf" )
+
+infercnv_obj = readRDS("./infercnv_out//run.final.infercnv_obj")
+expr <- infercnv_obj@expr.data
+expr2=expr-1
+expr2=expr2 ^ 2
+CNV_score=as.data.frame(colMeans(expr2))
+colnames(CNV_score)="CNV_score"
+experiment.aggregate@meta.data$CNV <- CNV_score
+DimPlot(experiment.aggregate,reduction='umap')
+VlnPlot(experiment.aggregate, features = c("CNV"),pt.size=0,
+        ncol = 1)
+
