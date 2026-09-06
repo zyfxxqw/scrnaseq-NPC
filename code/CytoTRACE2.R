@@ -5,17 +5,17 @@ library(paletteer)
 library(BiocParallel)
 library("ggunchull")
 library(tidydr)
-cytotrace2_res <- cytotrace2(sce,#seurat对象
+cytotrace2_res <- cytotrace2(sce,
                              is_seurat =TRUE,
-                             slot_type ="counts",#counts和data都可以
-                             species ='human')#物种要选择，默认是小鼠
+                             slot_type ="counts",
+                             species ='human')
 
 
-# plotting-一次性生成多个图，然后储存在一个list，用$查看即可
+
 annotation <- data.frame(phenotype = sce@meta.data$seurat_clusters) %>%
   set_rownames(., colnames(sce))
 
-# plotting-一次性生成多个图，然后储存在一个list，用$查看即可
+
 plots <- plotData(cytotrace2_result = cytotrace2_res,annotation=annotation,
                   is_seurat =TRUE)
 plots$CytoTRACE2_UMAP+NoAxes()+
