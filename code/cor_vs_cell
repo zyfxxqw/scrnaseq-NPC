@@ -1,0 +1,54 @@
+##############################cor############################################
+library(Seurat)
+library(dplyr)
+library(readr)
+
+# 1. 
+meta_df <- obj@meta.data
+
+
+# 2. mean MP
+mp_patient_mean <- meta_df %>%
+  group_by(patients) %>%
+  summarise(
+    MP1_score_mean = mean(MP1_score, na.rm = TRUE),
+    MP2_score_mean = mean(MP2_score, na.rm = TRUE),
+    MP3_score_mean = mean(MP3_score, na.rm = TRUE),
+    MP4_score_mean = mean(MP4_score, na.rm = TRUE),
+    n_cells = n()
+  ) %>%
+  ungroup()
+
+# 3. result
+print(mp_patient_mean)
+
+# 4. 
+write_csv(mp_patient_mean, "patient_MP_mean_scores.csv")
+
+
+
+library(dplyr)
+
+major_prop_by_patient <- sce@meta.data %>%
+  dplyr::select(patients, type, celltype1) %>%
+  group_by(patients, type) %>%
+  summarise(
+    total_T_cells = n(),
+    Exhausted_CD8_T_prop = sum(celltype1 == "Exhausted_CD8_T") / total_T_cells,
+    Treg_prop = sum(celltype1 == "Treg") / total_T_cells,
+    Cytotoxic_CD8_T_prop = sum(celltype1 == "Cytotoxic_CD8_T") / total_T_cells,
+    Tfh_like_CXCL13_helper_T_prop = sum(celltype1 == "Tfh_like_CXCL13_helper_T") / total_T_cells,
+    .groups = "drop"
+  )
+
+major_prop_by_patient
+
+ex_cd8_prop_by_patient <- ex_cd8_prop_by_patient %>%
+  mutate(Exhausted_CD8_T_percent = Exhausted_CD8_T_prop * 100)
+
+df_cor_prop <- inner_join(mp_patient_mean, patient_score_mean, by = "patients")
+
+cor.test(df_cor_prop$MP3_score_mean, df_cor_prop$Cytotoxic_CD8_T_prop, method = "spearman")
+cor.test(df_cor_prop$MP2_score_mean, df_cor_prop$Exhausted_CD8_T_prop, method = "pearson")
+# 4.  out with csv
+write_csv(df_cor_prop, "patient_MP_mean_Tscore_cor.csv")
